@@ -1,1 +1,2 @@
 # ESP8266_Load_Controller
+This project is a sample load controller that uses MQTT and end-to-end AES-128 encryption to allow a Processing3 application to control a relay managed load with an ESP8266 on a NodeMCU Board.
