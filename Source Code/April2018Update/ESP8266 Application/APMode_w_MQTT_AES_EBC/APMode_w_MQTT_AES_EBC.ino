@@ -3,16 +3,21 @@
 #include <Button.h>
 #include <EMem.h>
 #include <PubSubClient.h>
+#include <Base64_MLC.h>  //the arduinobase64 library had to be modified to remove the need for the avr/progmem library
+#include <AES.h>
+#include <AES_config.h>
 
 #define clip(x, min, max)      ((x) > (max))? (max) : ((x) < (min))? (min) : (x)
 
 String MAC_ID;
 
+AES aes ;
+
 const char* mqtt_server = "m10.cloudmqtt.com";
 const char* mqtt_port = "17934";
 const char* mqtt_user = "dkpljrty";
 const char* mqtt_pwd = "ZJDsxMVKRjoR";
-const char* AES_key ="2222222222222222";
+byte AES_key[] ="2222222222222222";
 const char* AES_IV ="1111111111111111";
 const char* wifiMode = "tkip";
 
@@ -23,6 +28,11 @@ const unsigned long SECONDS = 1000;
 const unsigned long PERIOD = 10 * SECONDS;
 
 WiFiManager wifiManager;
+WiFiManagerParameter mqtt_server_param("mqtt_server", "mqtt_server", mqtt_server, 40);
+WiFiManagerParameter mqtt_port_param("mqtt_port", "mqtt_port", mqtt_port, 40);
+WiFiManagerParameter mqtt_user_param("mqtt_user", "mqtt_user", mqtt_user, 40);
+WiFiManagerParameter mqtt_pwd_param("mqtt_pwd", "mqtt_pwd", mqtt_pwd, 50);
+
 WiFiClient espClient;
 PubSubClient client(espClient);
 String MQTT_TOPIC_PUB = "out/devices/"; //append MAC_ID
@@ -41,6 +51,52 @@ void configModeCallback (WiFiManager *myWiFiManager)
   Serial.println("Entered config mode");
 }
 
+String encodeMessage(byte key[], String msg)
+{
+  byte plain[msg.length() + 1];
+  msg.getBytes(plain, msg.length() + 1);
+  byte cipher [N_BLOCK] ;
+  aes.set_key (key, 128) ;
+  aes.encrypt (plain, cipher) ;
+
+  aes.copy_n_bytes (plain, cipher, sizeof(plain)) ;
+
+  char data [sizeof(cipher) + 1] = {0}; //make null character array
+  for (int i = 0; i < sizeof(cipher); i++) //trasfer cipher into null character array
+  {
+    data[i] = char (cipher[i]); //should there be a char typecast?
+  }
+  int inputLen = sizeof(cipher);
+  int encodedLen = base64_enc_len(inputLen);
+  char encoded[encodedLen];
+  base64_encode(encoded, data, inputLen);
+  return String(encoded);
+}
+
+String decodeMessage(byte key[], String msg, int msgLength)
+{
+  char encoded[msg.length() + 1];
+  msg.toCharArray(encoded, msg.length() + 1);
+
+  int input2Len = sizeof(encoded);
+  int decodedLen = base64_dec_len(encoded, input2Len);
+  char decoded[decodedLen];
+
+  base64_decode(decoded, encoded, input2Len);
+
+  String decodedString = String(decoded);
+
+  byte cipher[decodedString.length() + 1];
+  decodedString.getBytes(cipher, decodedString.length() + 1);
+
+  byte check[msgLength];
+
+  aes.set_key (key, 128) ;
+  aes.decrypt(cipher, check) ;
+
+  return String((char*) check).substring(0, msgLength);
+}
+
 void callback(char* topic, byte* payload, unsigned int length)
 {
   char message_buff[100] = {};
@@ -50,9 +106,9 @@ void callback(char* topic, byte* payload, unsigned int length)
     message_buff[i] = payload[i];
   }
   message_buff[i] = '\0';
-  Serial.println(" >>>> MESSAGE: " + String(message_buff));
+  String message_ = String(message_buff);
+  Serial.println(" >>>> MESSAGE: " + message_ + " >>>> DECODED: " + decodeMessage(AES_key, message_,(int) length));
 }
-
 
 unsigned long reconnect() //records how long each reconnect takes
 {
@@ -142,13 +198,13 @@ void data_setup(char* data)
   strcat(data, sep);
   strcat(data, wifiManager.getPassword().c_str());
   strcat(data, sep);
-  strcat(data, mqtt_server);
+  strcat(data, mqtt_server_param.getValue());
   strcat(data, sep);
-  strcat(data, mqtt_port);
+  strcat(data, mqtt_port_param.getValue());
   strcat(data, sep);
-  strcat(data, mqtt_user);
+  strcat(data, mqtt_user_param.getValue());
   strcat(data, sep);
-  strcat(data, mqtt_pwd);
+  strcat(data, mqtt_pwd_param.getValue());
   strcat(data, sep);
   Serial.println("Current values ready to be upated to EEPROM:");
   Serial.println(data);
@@ -230,13 +286,13 @@ void APModeSetup()
   emem.loadData();
   Serial.println();
   Serial.println("First read");
-  Serial.print("EEPROM recorded Configured state: "); Serial.println( emem.getConfigStatus());
-  Serial.print("EEPROM recorded SSID: "); Serial.println(emem.getWifiSsid());
-  Serial.print("EEPROM recorded PWD: "); Serial.println(emem.getWifiPwd());/*
-  Serial.println(mqtt_server);
-  Serial.println(mqtt_port);
-  Serial.println(mqtt_user);
-  Serial.println(mqtt_pwd);*/
+  Serial.println("EEPROM recorded Configured state: " + emem.getConfigStatus());
+  Serial.println("EEPROM recorded SSID: "+ emem.getWifiSsid());
+  Serial.println("EEPROM recorded PWD: "+emem.getWifiPwd());
+  Serial.println ("EEPROM recorded MQTT Server: "+emem.getMqttServer());
+  Serial.println("EEPROM recorded MQTT Port: "+emem.getMqttPort());
+  Serial.println("EEPROM recorded MQTT User: "+emem.getMqttUser());
+  Serial.println("EEPROM recorded MQTT Pwd: "+emem.getMqttPwd());
 
   MAC_ID = WiFi.macAddress();
   MQTT_TOPIC_PUB += MAC_ID + "/";
@@ -289,6 +345,11 @@ void setup()
 {
   Serial.begin(115200);
 
+  wifiManager.addParameter(&mqtt_server_param);
+  wifiManager.addParameter(&mqtt_port_param);
+  wifiManager.addParameter(&mqtt_user_param);
+  wifiManager.addParameter(&mqtt_pwd_param);
+  
   APModeSetup();
 
   //pinMode(D4, INPUT_PULLUP);
@@ -314,7 +375,7 @@ void loop() {
       {
         //publish
         Serial.println(String(currTime) + " : Publishing!");
-        //client.publish(String(MQTT_TOPIC_PUB + "1").c_str(), "encypt this");
+        client.publish(String(MQTT_TOPIC_PUB + "1").c_str(), encodeMessage(AES_key, "encypt this").c_str());
       }
       mqtt_time = currTime + reconnectTime;
     }

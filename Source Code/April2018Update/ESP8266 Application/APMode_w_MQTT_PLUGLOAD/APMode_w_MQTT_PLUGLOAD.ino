@@ -83,6 +83,10 @@ const unsigned long SECONDS = 1000;
 const unsigned long PERIOD = 10 * SECONDS;
 
 WiFiManager wifiManager;
+WiFiManagerParameter mqtt_server_param("mqtt_server", "mqtt_server", mqtt_server, 40);
+WiFiManagerParameter mqtt_port_param("mqtt_port", "mqtt_port", mqtt_port, 40);
+WiFiManagerParameter mqtt_user_param("mqtt_user", "mqtt_user", mqtt_user, 40);
+WiFiManagerParameter mqtt_pwd_param("mqtt_pwd", "mqtt_pwd", mqtt_pwd, 50);
 WiFiClient espClient;
 PubSubClient client(espClient);
 String MQTT_TOPIC_PUB = "out/devices/"; //append MAC_ID
@@ -405,7 +409,7 @@ void EEPROMReset()
       delay (500);
 
       Serial.println("EEPROM overwrite complete, restarting...");
-      ESP.reset();  //Board will reset before leaving loop
+      ESP.restart();  //Board will reset before leaving loop
       delay (2000);
     }
     else
@@ -422,7 +426,7 @@ void EEPROMReset()
   Serial.println("Soft Reset command received, restarting...");
 
   delay (500);
-  ESP.reset(); //alternative approach is using [ESP.restart();] //Button not held for 4 seconds, loop terminates early - this provides dual function for this reset, soft and hard reset depending on hold time
+  ESP.restart(); //alternative approach is using [ESP.restart();] //Button not held for 4 seconds, loop terminates early - this provides dual function for this reset, soft and hard reset depending on hold time
   delay (2000);
 }
 
@@ -435,13 +439,13 @@ void data_setup(char* data)
   strcat(data, sep);
   strcat(data, wifiManager.getPassword().c_str());
   strcat(data, sep);
-  strcat(data, mqtt_server);
+  strcat(data, mqtt_server_param.getValue());
   strcat(data, sep);
-  strcat(data, mqtt_port);
+  strcat(data, mqtt_port_param.getValue());
   strcat(data, sep);
-  strcat(data, mqtt_user);
+  strcat(data, mqtt_user_param.getValue());
   strcat(data, sep);
-  strcat(data, mqtt_pwd);
+  strcat(data, mqtt_pwd_param.getValue());
   strcat(data, sep);
   Serial.println("Current values ready to be upated to EEPROM:");
   Serial.println(data);
@@ -462,7 +466,7 @@ void setup_wifi()
     configured[0] = '0';
     data_setup(data);
     emem.saveData(data);
-    ESP.reset();
+    ESP.restart();
     delay(1000);
   }
   else
@@ -485,7 +489,7 @@ void setup_wifi()
   Serial.println("");
   wifiManager.setAPCallback(configModeCallback);
   wifiManager.setTimeout(45); // 45 sec to timeout
-  //wifiUpdate(0);
+  wifiUpdate(0);
   Serial.println("Setting up Wifi");
   String accessPointName = "ESP - " + MAC_ID;
   if (!wifiManager.autoConnect(accessPointName.c_str(), "")) { //credentials for SSID in AP mode
@@ -496,7 +500,7 @@ void setup_wifi()
     configured[0] = emem.getConfigStatus().charAt(0) -  1;
     data_setup(data);
     emem.saveData(data);
-    ESP.reset();
+    ESP.restart();
     delay(1000);
   }
   else {
@@ -507,7 +511,7 @@ void setup_wifi()
     data_setup(data);
     emem.saveData(data);
 
-    ESP.reset();
+    ESP.restart();
     delay(1000);
   }
   delay(1000);
@@ -577,13 +581,13 @@ void APModeSetup()
   emem.loadData();
   Serial.println();
   Serial.println("First read");
-  Serial.print("EEPROM recorded Configured state: "); Serial.println( emem.getConfigStatus());
-  Serial.print("EEPROM recorded SSID: "); Serial.println(emem.getWifiSsid());
-  Serial.print("EEPROM recorded PWD: "); Serial.println(emem.getWifiPwd());/*
-  Serial.println(mqtt_server);
-  Serial.println(mqtt_port);
-  Serial.println(mqtt_user);
-  Serial.println(mqtt_pwd);*/
+  Serial.println("EEPROM recorded Configured state: " + emem.getConfigStatus());
+  Serial.println("EEPROM recorded SSID: "+ emem.getWifiSsid());
+  Serial.println("EEPROM recorded PWD: "+emem.getWifiPwd());
+  Serial.println ("EEPROM recorded MQTT Server: "+emem.getMqttServer());
+  Serial.println("EEPROM recorded MQTT Port: "+emem.getMqttPort());
+  Serial.println("EEPROM recorded MQTT User: "+emem.getMqttUser());
+  Serial.println("EEPROM recorded MQTT Pwd: "+emem.getMqttPwd());
 
   MAC_ID = WiFi.macAddress();
   MQTT_TOPIC_PUB += MAC_ID + "/";
@@ -622,7 +626,7 @@ void APModeSetup()
         data_setup(data);
         emem.saveData(data);
 
-        ESP.reset();
+        ESP.restart();
         delay(1000);
       }
     }
@@ -635,9 +639,11 @@ void APModeSetup()
 void setup()
 {
   Serial.begin(115200);
-
-  Serial.println();
-  Serial.println();
+  
+  wifiManager.addParameter(&mqtt_server_param);
+  wifiManager.addParameter(&mqtt_port_param);
+  wifiManager.addParameter(&mqtt_user_param);
+  wifiManager.addParameter(&mqtt_pwd_param);
 
   APModeSetup();
 
@@ -669,6 +675,7 @@ void loop()
   // put your main code here, to run repeatedly:
   if (WiFi.status() == WL_CONNECTED)
   {
+    wifiUpdate(2);
     //code in this block will run only if connected
     //do MQTT operations here periodically
     if (currTime >= mqtt_time)
@@ -679,11 +686,18 @@ void loop()
       {
         //publish
         Serial.println(String(currTime) + " : Publishing!");
-        //client.publish(String(MQTT_TOPIC_PUB + "1").c_str(), "encypt this");
+        if(LED1)
+          client.publish(String(MQTT_TOPIC_PUB + "1").c_str(), encodeMessage(AES_key, "LED Configured").c_str());        
+        if(LED2)
+          client.publish(String(MQTT_TOPIC_PUB + "2").c_str(), encodeMessage(AES_key, "LED Configured").c_str());        
         change = false;
       }
       mqtt_time = currTime + reconnectTime;
     }
+  }
+  else
+  {
+    wifiUpdate(3); 
   }
 
   buttonCount = buttonCount % 4;
@@ -695,13 +709,12 @@ void loop()
   }
 
   if (button.uniquePress()) {
+    wifiUpdate(3); 
     EEPROMReset();
   }
 
   //This part of the code reads from port ADC0 and publishes to topic 3
-  // if (meterRead)
-  // {
-  /*
+  
   meterCount++;
   int portRead = analogRead(A0);
   // float current = currentLinearCalibration(1,portRead,0);
@@ -734,7 +747,6 @@ void loop()
   totalCurrent = totalCurrent + current;
   if (meterCount == sampleRate)
   {
-
     //float current = currentCalibration(0.0312,portRead,-21.496);
     //  float current = currentCalibration(0.0264,portRead,-18.058);
 
@@ -749,12 +761,12 @@ void loop()
     Serial.print("E.D. Published: ");
     Serial.print("Analog Read");
     Serial.print("\n");
-    String pubString = "Current Value: " + String(avgCurrent) + "\n";
+    String pubString = "Current Value: " + String(avgCurrent);
     Serial.println(pubString);
     if(WiFi.status() == WL_CONNECTED && client.connected())
-      client.publish(String(MQTT_TOPIC_PUB + "3").c_str(), pubString.c_str());
+      client.publish(String(MQTT_TOPIC_PUB + "3").c_str(), encodeMessage(AES_key, String(avgCurrent)).c_str());
 
     totalCurrent = 0;
     meterCount = 0;
-  }*/
+  }
 }

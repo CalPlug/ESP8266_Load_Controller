@@ -14,7 +14,7 @@ String RequestLEDon1, RequestLEDon2;
 String StatusLEDoff1, StatusLEDoff2;
 String StatusLEDon1, StatusLEDon2;
 String device_MAC_ID = "5C:CF:7F:12:14:B3";
-String currentValue = "Current Value: 0"; 
+String currentValue = "Current Value: 0.000\0"; 
 String mqtt_user = "dkpljrty"; 
 String mqtt_pwd = "ZJDsxMVKRjoR";
 
@@ -256,15 +256,8 @@ void messageReceived(String topic, byte[] payload){
   String s = new String(payload);
   
   println("Payload: ", s);
-  
-  //String e = encodeMessage(key, s);
-  if (topic.equals(subscribed_topic1) || topic.equals(subscribed_topic2))
-  {
-    s = decodeMessage(key, s); 
-    
-   //println("Encrypt Message: ", e);
-    println("Decrypt Message: ", s);
-  }
+  s = decodeMessage(key, s); 
+
   if (topic.equals(subscribed_topic1) && StatusLEDon1.equals(s)){
     button1 = true;
     LED1 = true;
@@ -283,8 +276,8 @@ void messageReceived(String topic, byte[] payload){
   }
   if (topic.equals(subscribed_topic3))
   {
-    currentValue = s;  
+    currentValue = "Current = " + s.substring(0,5);  
   }
   
-  println("new message: " + topic + " - " + new String(payload));
+  println("new message: " + topic + " - " + currentValue);
 }
