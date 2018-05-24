@@ -172,21 +172,12 @@ void EEPROMReset()
       Serial.println("Now Resetting EEPROM to default and restarting (Hard Reset)");
 
       delay (20);
-      String dataStr = "3#ssid#pw123456789#";
-      if(validMQTTCredentials)
-      {
-        dataStr +=  String(mqtt_server_param->getValue()) +"#" +
-                    String(mqtt_port_param->getValue())+ "#" +
-                    String(mqtt_user_param->getValue())+ "#" + 
-                    String(mqtt_pwd_param->getValue())+"#"; 
-      }
-      else
-      {        
-        dataStr +=  emem.getMqttServer() +"#" +
-                    emem.getMqttPort() +"#" +
-                    emem.getMqttUser() +"#" +
-                    emem.getMqttPwd() +"#" ; 
-      }
+      String dataStr = "3#ssid#pw123456789#";           
+      dataStr +=  emem.getMqttServer() +"#" +
+                  emem.getMqttPort() +"#" +
+                  emem.getMqttUser() +"#" +
+                  emem.getMqttPwd() +"#" ; 
+      
       char data[100];
       strncpy(data, dataStr.c_str(), sizeof(dataStr.c_str()));
       emem.saveData(data);
@@ -230,7 +221,6 @@ void data_setup(char* data)
   strcat(data, mqtt_user_param->getValue());
   strcat(data, sep);
   strcat(data, mqtt_pwd_param->getValue());
-
   strcat(data, sep);
   Serial.println("Current values ready to be upated to EEPROM:");
   Serial.println(data);
@@ -247,11 +237,15 @@ void setup_wifi()
   if (n == 0)
   {
     Serial.println("no networks found");
-    char data[100] = {};
-    configured[0] = '0';
-    data_setup(data);
+    String dataStr = "0#ssid#pw123456789#";           
+    dataStr +=  emem.getMqttServer() +"#" +
+                emem.getMqttPort() +"#" +
+                emem.getMqttUser() +"#" +
+                emem.getMqttPwd() +"#" ;     
+    char data[100];
+    strncpy(data, dataStr.c_str(), sizeof(dataStr.c_str()));
     emem.saveData(data);
-    ESP.reset();
+    delay (500);
     delay(1000);
   }
   else
@@ -355,29 +349,6 @@ void APModeSetup()
     Serial.println("Connection Time Out...");
     Serial.println("Enter AP Mode...");
     setup_wifi();
-
-    Serial.println("Credentials set from user response in AP mode.");
-    char data[100] = {};
-    Serial.print("SSID: "); Serial.println(wifiManager.getSSID().c_str());
-    Serial.print("Password: "); Serial.println(wifiManager.getPassword().c_str());
-    WiFi.begin(wifiManager.getSSID().c_str(), wifiManager.getPassword().c_str());
-    Serial.println("Configuration entered. Testing connection.");
-
-    for (int j = 0; WiFi.status() != WL_CONNECTED; j++re)
-    {
-      Serial.print(".");
-      delay(1000);
-
-      if (j >= 100) {
-        Serial.println("Timeout initial connection to AP");
-        configured[0] = emem.getConfigStatus().charAt(0) -  1;
-        data_setup(data);
-        emem.saveData(data);
-
-        ESP.reset();
-        delay(1000);
-      }
-    }
   }
   WiFi.begin(emem.getWifiSsid().c_str(), emem.getWifiPwd().c_str());
   Serial.println("Connected");
@@ -396,7 +367,6 @@ void setup()
   memset(server, 0, sizeof(server));
   emem.getMqttServer().toCharArray(server, emem.getMqttServer().length()+1);
   client = new PubSubClient(server, atoi(emem.getMqttPort().c_str()), callback, espClient);
-
   mqtt_time = millis();
 }
 
@@ -414,10 +384,7 @@ void loop() {
       {
         //publish
         Serial.println(String(currTime) + " : Publishing!"); 
-        client->publish(String(MQTT_TOPIC_PUB + "1").c_str(), encodeMessage(AES_key, "encypt this").c_str());
-        validMQTTCredentials = true;
-      }else{
-        validMQTTCredentials = false;
+        client->publish(String(MQTT_TOPIC_PUB + "1").c_str(), encodeMessage(AES_key, "encypt this").c_str()); 
       }
       mqtt_time = currTime + reconnectTime;
     }
