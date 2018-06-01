@@ -22,4 +22,3 @@ the MQTT credentials. Only the WiFi credentials is cleared.
 There are currently independent WiFiManager libraries that have EEPROM
 saving features. However, the quality of those libraries are not the best.
 In the future, there may be an implementation of WiFiManager that has this feature.
-Keep an eye out for that.
