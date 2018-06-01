@@ -14,6 +14,6 @@ the 3 cases that can happen after credentials are entered. It handles
 what is saved into the EEPROM. There's no need to call this function outside
 of APModeSetup().
 
-* EEPROMReset() is the function should be called when an hardware interface
+* EEPROMReset() is the function that should be called when an hardware interface
 such as a button is pressed. This function lets the user reset the hardware
 or clear the saved credentials within the EEPROM.
