@@ -19,6 +19,8 @@ such as a button is pressed. This function lets the user reset the hardware
 or clear the saved credentials within the EEPROM. Note: This does not clear
 the MQTT credentials. Only the WiFi credentials is cleared.
 
+Please use APMode_w_MQTT_AES_EBC.ino for the most updated reference
+
 There are currently independent WiFiManager libraries that have EEPROM
 saving features. However, the quality of those libraries are not the best.
 In the future, there may be an implementation of WiFiManager that has this feature.
