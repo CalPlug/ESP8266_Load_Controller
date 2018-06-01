@@ -9,7 +9,7 @@ credentials obtained via WiFiManager library to the EEPROM. There are
 gather WiFi and MQTT credentials. In the standard arduino program, this 
 function belongs in the setup().
 
-* setupWifi() is contained within the APModeSetup function which handles
+* setup_wifi() is contained within the APModeSetup function which handles
 the 3 cases that can happen after credentials are entered. It handles
 what is saved into the EEPROM. There's no need to call this function outside
 of APModeSetup().
