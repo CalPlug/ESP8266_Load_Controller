@@ -16,4 +16,5 @@ of APModeSetup().
 
 * EEPROMReset() is the function that should be called when an hardware interface
 such as a button is pressed. This function lets the user reset the hardware
-or clear the saved credentials within the EEPROM.
+or clear the saved credentials within the EEPROM. Note: This does not clear
+the MQTT credentials.
