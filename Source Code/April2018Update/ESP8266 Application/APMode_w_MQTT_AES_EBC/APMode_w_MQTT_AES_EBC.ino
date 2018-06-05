@@ -205,6 +205,7 @@ void EEPROMReset()
   delay (2000);
 }
 
+//Setup string to save into EEPROM
 void data_setup(char* data)
 {
   char* sep = "#";
@@ -227,6 +228,7 @@ void data_setup(char* data)
   Serial.println();
 }
 
+//Handles different possibilites after entering WiFi credentials
 void setup_wifi()
 {
   WiFi.mode(WIFI_STA);
@@ -234,7 +236,7 @@ void setup_wifi()
   delay(100);
   int n = WiFi.scanNetworks();
   Serial.println("scan done");
-  if (n == 0)
+  if (n == 0)//if there are no networks found, resume without wifi
   {
     Serial.println("no networks found");
     String dataStr = "0#ssid#pw123456789#";           
@@ -272,9 +274,9 @@ void setup_wifi()
   Serial.println("Setting up Wifi");
   String accessPointName = "ESP - " + MAC_ID;
   if (!wifiManager.autoConnect(accessPointName.c_str(), "")) { //credentials for SSID in AP mode
-
     Serial.println("failed to connect and hit timeout");
-    //reset and try again, or maybe put it to deep sleep
+    //Timeout: Subtract config value for every timeout
+    //Once the config value hits 0, the system will resume without connecting to wifi
     char data[100] = {};
     configured[0] = emem.getConfigStatus().charAt(0) -  1;
     data_setup(data);
@@ -285,7 +287,6 @@ void setup_wifi()
   else {
     char data[100] = {};
     Serial.println("Connected. Saving to EEPROM and resetting.");
-
     configured[0] = '9';
     data_setup(data);
     emem.saveData(data);
@@ -314,6 +315,7 @@ void APModeSetup()
   Serial.println("EEPROM recorded MQTT User: "+emem.getMqttUser());
   Serial.println("EEPROM recorded MQTT Pwd: "+emem.getMqttPwd());
 
+ //Initialize WiFiManager objects for MQTT credentials
 #ifdef DEFAULT_VALUES_FROM_EEPROM
   mqtt_server_param = new WiFiManagerParameter("mqtt_server", "mqtt_server", emem.getMqttServer().c_str(), 40);
   mqtt_port_param = new WiFiManagerParameter("mqtt_port", "mqtt_port", emem.getMqttPort().c_str(), 40);
