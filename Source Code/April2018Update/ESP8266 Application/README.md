@@ -6,8 +6,8 @@ first upload this program to initialize the values in the EEPROM. These values a
 necessary for the AP mode control flow to work.
 
 The purpose of this AP mode script is to provide the control flow for saving
-credentials obtained via WiFiManager library to the EEPROM. There are 
-3 key functions in this control flow.
+credentials obtained via WiFiManager library to the EEPROM, since the WiFiManager
+library does not provide that featrure. There are 3 key functions in this control flow.
 
 * APModeSetup() is used to setup the ap configuration portal that will
 gather WiFi and MQTT credentials. In the standard arduino program, this 
