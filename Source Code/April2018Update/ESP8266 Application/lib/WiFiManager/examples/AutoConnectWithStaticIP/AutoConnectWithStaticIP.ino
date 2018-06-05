@@ -1,10 +1,18 @@
 #include <FS.h>                   //this needs to be first, or it all crashes and burns...
 
+#if defined(ESP8266)
 #include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
+#else
+#include <WiFi.h>          //https://github.com/esp8266/Arduino
+#endif
 
 //needed for library
 #include <DNSServer.h>
+#if defined(ESP8266)
 #include <ESP8266WebServer.h>
+#else
+#include <WebServer.h>
+#endif
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
 
 
@@ -35,16 +43,21 @@ void setup() {
   //reset settings - for testing
   //wifiManager.resetSettings();
 
-  //set static ip 
-  //the commented bit only works for ESP8266 core 2.1.0 or newer
-  /*IPAddress _ip,_gw,_sn;
-  _ip.fromString(static_ip);
-  _gw.fromString(static_gw);
-  _sn.fromString(static_sn);
-*/
+  //set static ip
+  //block1 should be used for ESP8266 core 2.1.0 or newer, otherwise use block2
+
+  //start-block1
+  //IPAddress _ip,_gw,_sn;
+  //_ip.fromString(static_ip);
+  //_gw.fromString(static_gw);
+  //_sn.fromString(static_sn);
+  //end-block1
+
+  //start-block2
   IPAddress _ip = IPAddress(10, 0, 1, 78);
   IPAddress _gw = IPAddress(10, 0, 1, 1);
   IPAddress _sn = IPAddress(255, 255, 255, 0);
+  //end-block2
   
   wifiManager.setSTAStaticIPConfig(_ip, _gw, _sn);
 
@@ -56,7 +69,7 @@ void setup() {
   if (!wifiManager.autoConnect("AutoConnectAP", "password")) {
     Serial.println("failed to connect, we should reset as see if it connects");
     delay(3000);
-    ESP.reset();
+    ESP.restart();
     delay(5000);
   }
 

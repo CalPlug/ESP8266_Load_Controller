@@ -1,8 +1,16 @@
+#if defined(ESP8266)
 #include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
+#else
+#include <WiFi.h>          //https://github.com/esp8266/Arduino
+#endif
 
 //needed for library
 #include <DNSServer.h>
+#if defined(ESP8266)
 #include <ESP8266WebServer.h>
+#else
+#include <WebServer.h>
+#endif
 #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
 
 
@@ -17,7 +25,7 @@ void setup() {
     //wifiManager.resetSettings();
     
     //set custom ip for portal
-    //wifiManager.setAPConfig(IPAddress(10,0,1,1), IPAddress(10,0,1,1), IPAddress(255,255,255,0));
+    //wifiManager.setAPStaticIPConfig(IPAddress(10,0,1,1), IPAddress(10,0,1,1), IPAddress(255,255,255,0));
 
     //fetches ssid and pass from eeprom and tries to connect
     //if it does not connect it starts an access point with the specified name
