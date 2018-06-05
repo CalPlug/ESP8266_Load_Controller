@@ -1,6 +1,8 @@
 How to use AP mode
 =====
 
+*NOTE: EEPROM must first be initialized with the program initEEPROM.ino*
+
 The purpose of this AP mode script is to provide the control flow for saving
 credentials obtained via WiFiManager library to the EEPROM. There are 
 3 key functions in this control flow.
